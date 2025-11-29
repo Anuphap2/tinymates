@@ -290,7 +290,24 @@ export default function CozyFocusApp() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: t }] }] }),
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `You are a cute virtual pet named "Tiny" living in a focus timer app called TinyMates. 
+                    Roleplay as a supportive, cute, and friendly pet. 
+                    Use emojis like 🐱, 🐾, ✨, ❤️ frequently. 
+                    Speak in Thai (unless spoken to in another language). 
+                    Keep your responses short, encouraging, and fun. 
+                    If the user is working, encourage them to focus. 
+                    If they are tired, tell them to take a break.
+                    User said: ${t}`,
+                  },
+                ],
+              },
+            ],
+          }),
         }
       );
       const d = await r.json();
