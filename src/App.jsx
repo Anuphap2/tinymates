@@ -60,11 +60,11 @@ export default function CozyFocusApp() {
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   // New: To-Do List State
-  const [tasks, setTasks] = useState([
+  const [tasks, setTasks] = useState(() => SecureStorage.getItem("tasks", [
     { id: 1, text: "Start focusing!", done: false },
-  ]);
+  ]));
   const [newTask, setNewTask] = useState("");
-  const [isSupporter, setIsSupporter] = useState(false);
+  const [isSupporter, setIsSupporter] = useState(() => SecureStorage.getItem("isSupporter", false));
 
   const messagesEndRef = useRef(null);
   const gainNodeRef = useRef(null);
@@ -79,7 +79,9 @@ export default function CozyFocusApp() {
     SecureStorage.setItem("equippedPets", equippedPets);
     SecureStorage.setItem("activeTheme", activeTheme);
     SecureStorage.setItem("activeSound", activeSound);
-  }, [coins, inventory, equippedPets, activeTheme, activeSound]);
+    SecureStorage.setItem("tasks", tasks);
+    SecureStorage.setItem("isSupporter", isSupporter);
+  }, [coins, inventory, equippedPets, activeTheme, activeSound, tasks, isSupporter]);
 
   // Audio Engine Init
   // Audio Engine Init
@@ -374,15 +376,15 @@ export default function CozyFocusApp() {
               </div>
             )}
             {tasks.map((t) => (
-              <div key={t.id} className="flex items-center gap-2 text-sm group">
+              <div key={t.id} className="flex items-center gap-2 text-sm group bg-white/50 p-2 rounded-lg hover:bg-white/80 transition-colors">
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${t.done
+                  className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${t.done
                     ? "bg-indigo-500 border-indigo-500 text-white"
-                    : "border-slate-400"
+                    : "border-slate-400 bg-white"
                     }`}
                 >
-                  {t.done && <Check size={10} />}
+                  {t.done && <Check size={12} />}
                 </button>
                 <span
                   className={`flex-1 truncate ${t.done ? "line-through opacity-50" : ""
@@ -392,16 +394,17 @@ export default function CozyFocusApp() {
                 </span>
                 <button
                   onClick={() => deleteTask(t.id)}
-                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500"
+                  className="opacity-40 hover:opacity-100 text-slate-400 hover:text-red-500 p-1 transition-all"
+                  title="Delete task"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mt-2">
             <input
-              className={`flex-1 text-xs bg-transparent border-b border-slate-300/50 focus:border-indigo-500 outline-none py-1 ${isDark ? "placeholder-slate-500" : "placeholder-slate-400"
+              className={`flex-1 text-sm bg-white/50 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all ${isDark ? "placeholder-slate-500 bg-slate-800/50 border-slate-700 text-white" : "placeholder-slate-400"
                 }`}
               placeholder="พิมพ์งานใหม่..."
               value={newTask}
@@ -410,9 +413,9 @@ export default function CozyFocusApp() {
             />
             <button
               onClick={addTask}
-              className="text-indigo-500 hover:bg-indigo-100 rounded p-1"
+              className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-3 py-2 shadow-sm transition-all active:scale-95"
             >
-              <Plus size={16} />
+              <Plus size={20} />
             </button>
           </div>
         </div>
