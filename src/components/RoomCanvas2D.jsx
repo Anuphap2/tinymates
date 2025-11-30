@@ -26,7 +26,8 @@ export default React.memo(function RoomCanvas2D({
         activeTheme,
         activeSounds,
         isFocusing,
-        isSupporter
+        isSupporter,
+        onAddCoins
     });
 
     // Update refs when props change
@@ -36,9 +37,10 @@ export default React.memo(function RoomCanvas2D({
             activeTheme,
             activeSounds,
             isFocusing,
-            isSupporter
+            isSupporter,
+            onAddCoins
         };
-    }, [equippedPets, activeTheme, activeSounds, isFocusing, isSupporter]);
+    }, [equippedPets, activeTheme, activeSounds, isFocusing, isSupporter, onAddCoins]);
 
     const petsRef = useRef([]);
     const cloudsRef = useRef([]);
