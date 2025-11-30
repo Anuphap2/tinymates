@@ -6,8 +6,25 @@ import {
     drawCurtains,
     drawBookshelf,
     drawGrass,
-    drawLamp
+    drawLamp,
+    drawCuteChair,
+    drawRoundTable,
+    drawRug,
+    drawPainting,
+    drawWindow,
+    drawShelf
 } from "../utils/canvasHelpers";
+import {
+    drawKitchen,
+    drawBoho,
+    drawOutdoor,
+    drawGenericRoom,
+    drawBedroom,
+    drawCafe
+} from "../utils/themeDrawers";
+import { drawPet } from "../utils/petRenderer";
+import { drawParticles } from "../utils/particleSystem";
+import { drawWeatherEffects } from "../utils/weatherEffects";
 
 export default React.memo(function RoomCanvas2D({
     equippedPets,
@@ -46,7 +63,21 @@ export default React.memo(function RoomCanvas2D({
     const cloudsRef = useRef([]);
     const rainRef = useRef([]);
     const particlesRef = useRef([]);
+    const grassRef = useRef([]);
     const mouseRef = useRef({ x: 0, y: 0, active: false });
+    const bookDataRef = useRef(null);
+
+    // Initialize book data once to prevent flickering
+    if (!bookDataRef.current) {
+        const colors = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7"];
+        bookDataRef.current = Array(3).fill(0).map(() =>
+            Array(5).fill(0).map(() => ({
+                h: 20 + Math.random() * 10,
+                w: 8 + Math.random() * 5,
+                color: colors[Math.floor(Math.random() * colors.length)]
+            }))
+        );
+    }
 
     // Initialize objects only when equippedPets changes significantly
     useEffect(() => {
@@ -69,6 +100,7 @@ export default React.memo(function RoomCanvas2D({
                 stuckTimer: 0,
                 emote: null, // { type: 'heart' | 'music', life: 1.0 }
                 emoteTimer: Math.random() * 500,
+                lastPetTime: 0,
             });
         });
 
@@ -87,6 +119,19 @@ export default React.memo(function RoomCanvas2D({
                 y: Math.random() * window.innerHeight,
                 speed: 8 + Math.random() * 5,
             }));
+        }
+
+        // Initialize Grass (Static)
+        if (grassRef.current.length === 0) {
+            const W = window.innerWidth;
+            for (let i = 0; i < W; i += 20) {
+                if (Math.random() > 0.3) {
+                    grassRef.current.push({
+                        x: i + Math.random() * 10,
+                        scale: 0.8 + Math.random() * 0.4
+                    });
+                }
+            }
         }
         particlesRef.current = []; // Clear particles on pet change
     }, [equippedPets]);
@@ -285,106 +330,6 @@ export default React.memo(function RoomCanvas2D({
                 drawTree(ctx, W * 0.95, floorY, scale * 1.3);
             }
 
-            // Background Items (Fridge, Bed, Menu)
-            if (activeTheme === "theme_kitchen") {
-                // Fridge
-                const fridgeX = W * 0.1;
-                const fridgeY = floorY - 180 * scale;
-                ctx.fillStyle = "#e2e8f0"; // Silver
-                ctx.fillRect(fridgeX, fridgeY, 80 * scale, 180 * scale);
-                ctx.fillStyle = "#cbd5e1"; // Shadow/Detail
-                ctx.fillRect(fridgeX + 75 * scale, fridgeY, 5 * scale, 180 * scale); // Side
-                ctx.fillRect(fridgeX, fridgeY + 50 * scale, 80 * scale, 2 * scale); // Freezer line
-                ctx.fillStyle = "#94a3b8"; // Handle
-                ctx.fillRect(fridgeX + 10 * scale, fridgeY + 60 * scale, 5 * scale, 40 * scale);
-
-                // Hanging Light
-                drawLamp(ctx, W * 0.75 + 100 * scale, 0, scale); // Reusing lamp logic slightly modified? No, drawLamp is standing.
-                // Custom Hanging Light
-                const lightX = W * 0.75 + 100 * scale;
-                ctx.fillStyle = "#475569";
-                ctx.fillRect(lightX, 0, 2 * scale, 100 * scale);
-                ctx.fillStyle = "#fef3c7";
-                ctx.beginPath();
-                ctx.arc(lightX, 100 * scale, 15 * scale, 0, Math.PI, true);
-                ctx.fill();
-
-            } else if (activeTheme === "theme_bedroom") {
-                // Bed
-                const bedX = W * 0.1;
-                const bedY = floorY - 60 * scale;
-                ctx.fillStyle = "#f472b6"; // Pink sheets
-                ctx.beginPath();
-                ctx.roundRect(bedX, bedY, 160 * scale, 80 * scale, 10 * scale);
-                ctx.fill();
-                // Pillow
-                ctx.fillStyle = "#fff";
-                ctx.beginPath();
-                ctx.ellipse(bedX + 30 * scale, bedY + 20 * scale, 20 * scale, 15 * scale, 0, 0, Math.PI * 2);
-                ctx.fill();
-                // Blanket
-                ctx.fillStyle = "#db2777";
-                ctx.beginPath();
-                ctx.roundRect(bedX + 60 * scale, bedY, 100 * scale, 80 * scale, 10 * scale);
-                ctx.fill();
-
-                // Nightstand & Lamp
-                ctx.fillStyle = "#a16207";
-                ctx.fillRect(bedX - 40 * scale, floorY - 40 * scale, 30 * scale, 40 * scale);
-                drawLamp(ctx, bedX - 25 * scale, floorY - 80 * scale, scale * 0.8);
-
-            } else if (activeTheme === "theme_cafe") {
-                // Menu Board
-                const menuX = W * 0.15;
-                const menuY = floorY - 250 * scale;
-                ctx.fillStyle = "#44403c"; // Blackboard
-                ctx.fillRect(menuX, menuY, 100 * scale, 120 * scale);
-                ctx.fillStyle = "#a8a29e"; // Frame
-                ctx.lineWidth = 5 * scale;
-                ctx.strokeRect(menuX, menuY, 100 * scale, 120 * scale);
-                // Text lines
-                ctx.fillStyle = "rgba(255,255,255,0.5)";
-                for (let i = 0; i < 5; i++) {
-                    ctx.fillRect(menuX + 10 * scale, menuY + 20 * scale + i * 20 * scale, 60 * scale, 2 * scale);
-                }
-                // Hanging Plants
-                const plantX = W * 0.8;
-                ctx.fillStyle = "#166534";
-                ctx.beginPath();
-                ctx.moveTo(plantX, 0);
-                ctx.lineTo(plantX, 60 * scale);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.arc(plantX, 60 * scale, 15 * scale, 0, Math.PI * 2);
-                ctx.fill();
-                // Leaves hanging
-                ctx.beginPath();
-                ctx.ellipse(plantX - 10 * scale, 70 * scale, 5 * scale, 15 * scale, 0.5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.ellipse(plantX + 10 * scale, 70 * scale, 5 * scale, 15 * scale, -0.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Indoor Decor (Bookshelf, Curtains)
-            if (themeData.type !== "outdoor") {
-                // Bookshelf (if not Kitchen/Cafe/Bedroom specific spot occupied)
-                if (activeTheme !== "theme_kitchen" && activeTheme !== "theme_cafe") {
-                    drawBookshelf(ctx, W * 0.05, floorY - 150 * scale, scale);
-                }
-
-                // Curtains on Window
-                const winW = 220 * scale;
-                const winX = W / 2 - winW / 2;
-                const winY = floorY - 340 * scale;
-                drawCurtains(ctx, winX - 10 * scale, winY - 10 * scale, winW + 20 * scale, 180 * scale, scale);
-            } else {
-                // Outdoor Grass
-                for (let i = 0; i < W; i += 30 * scale) {
-                    if (Math.random() > 0.5) drawGrass(ctx, i, floorY, scale);
-                }
-            }
-
             // God Rays (Atmosphere)
             const rayGrad = ctx.createLinearGradient(W / 2, 0, W / 2, H);
             rayGrad.addColorStop(0, "rgba(255, 255, 255, 0.1)");
@@ -397,118 +342,26 @@ export default React.memo(function RoomCanvas2D({
             ctx.lineTo(W * 0.4, H);
             ctx.fill();
 
-            // Furniture
-            const deskX = W * 0.75;
-            const deskY = floorY - 100 * scale;
-
-            if (themeData.type === "outdoor") {
-                // Picnic Table / Bench
-                ctx.fillStyle = "#a16207"; // Wood
-                // Legs
-                ctx.beginPath();
-                ctx.moveTo(deskX + 40 * scale, deskY + 100 * scale);
-                ctx.lineTo(deskX + 60 * scale, deskY + 20 * scale);
-                ctx.lineTo(deskX + 70 * scale, deskY + 20 * scale);
-                ctx.lineTo(deskX + 50 * scale, deskY + 100 * scale);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(deskX + 190 * scale, deskY + 100 * scale);
-                ctx.lineTo(deskX + 170 * scale, deskY + 20 * scale);
-                ctx.lineTo(deskX + 160 * scale, deskY + 20 * scale);
-                ctx.lineTo(deskX + 180 * scale, deskY + 100 * scale);
-                ctx.fill();
-
-                // Top
-                ctx.fillStyle = "#fbbf24";
-                ctx.beginPath();
-                // Desk Shadow
-                ctx.shadowColor = "rgba(0,0,0,0.1)";
-                ctx.shadowBlur = 15 * scale;
-                ctx.shadowOffsetY = 5 * scale;
-
-                // Desk Top
-                ctx.fillStyle = "#fbbf24";
-                ctx.beginPath();
-                ctx.roundRect(deskX, deskY, 200 * scale, 20 * scale, 10 * scale);
-                ctx.fill();
-                ctx.shadowColor = "transparent";
-
-                // Drawers
-                ctx.fillStyle = "#d97706";
-                ctx.fillRect(deskX + 160 * scale, deskY + 20 * scale, 30 * scale, 40 * scale);
-                ctx.fillStyle = "#fcd34d"; // Handle
-                ctx.beginPath();
-                ctx.arc(deskX + 175 * scale, deskY + 40 * scale, 3 * scale, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Laptop
-                ctx.fillStyle = "#cbd5e1"; // Base
-                ctx.beginPath();
-                ctx.roundRect(deskX + 80 * scale, deskY - 5 * scale, 60 * scale, 5 * scale, 2 * scale);
-                ctx.fill();
-                ctx.fillStyle = "#94a3b8"; // Screen back
-                ctx.beginPath();
-                ctx.roundRect(deskX + 80 * scale, deskY - 45 * scale, 60 * scale, 40 * scale, 4 * scale);
-                ctx.fill();
-                ctx.fillStyle = "#334155"; // Screen
-                ctx.beginPath();
-                ctx.roundRect(deskX + 85 * scale, deskY - 40 * scale, 50 * scale, 30 * scale, 2 * scale);
-                ctx.fill();
-                // Apple logo (cute dot)
-                ctx.fillStyle = "#fff";
-                ctx.beginPath();
-                ctx.arc(deskX + 110 * scale, deskY - 25 * scale, 3 * scale, 0, Math.PI * 2);
-                ctx.fill();
+            // Background Items (Fridge, Bed, Menu)
+            // Background Items & Furniture
+            if (activeTheme === "theme_kitchen") {
+                drawKitchen(ctx, W, floorY, scale);
+            } else if (activeTheme === "theme_bedroom") {
+                drawBedroom(ctx, W, floorY, scale);
+            } else if (activeTheme === "theme_cafe") {
+                drawCafe(ctx, W, floorY, scale);
+            } else if (activeTheme === "theme_boho") {
+                drawBoho(ctx, W, floorY, scale);
+            } else if (themeData.type === "outdoor") {
+                // Outdoor Grass
+                grassRef.current.forEach(g => {
+                    drawGrass(ctx, g.x, floorY, scale * g.scale);
+                });
+                drawOutdoor(ctx, W, floorY, scale, activeTheme);
+            } else {
+                drawGenericRoom(ctx, W, floorY, scale, activeTheme, bookDataRef.current);
             }
 
-            const plantX = W * 0.15;
-            const plantY = floorY - 50 * scale;
-            const sway = Math.sin(Date.now() / 800) * 3;
-
-            // Pot Shadow
-            ctx.fillStyle = "rgba(0,0,0,0.1)";
-            ctx.beginPath();
-            ctx.ellipse(plantX + 30 * scale, plantY + 50 * scale, 25 * scale, 8 * scale, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Pot
-            ctx.fillStyle = "#d97706";
-            ctx.beginPath();
-            ctx.moveTo(plantX + 10 * scale, plantY + 50 * scale); // Bottom Left
-            ctx.lineTo(plantX + 50 * scale, plantY + 50 * scale); // Bottom Right
-            ctx.lineTo(plantX + 60 * scale, plantY); // Top Right
-            ctx.lineTo(plantX, plantY); // Top Left
-            ctx.closePath();
-            ctx.fill();
-
-            // Pot Rim
-            ctx.fillStyle = "#b45309";
-            ctx.beginPath();
-            ctx.roundRect(plantX - 5 * scale, plantY, 70 * scale, 10 * scale, 5 * scale);
-            ctx.fill();
-            ctx.fillStyle = "#86efac";
-            ctx.beginPath();
-            ctx.ellipse(
-                plantX + 30 * scale,
-                plantY - 30 * scale,
-                25 * scale,
-                40 * scale,
-                0.1 + sway * 0.01,
-                0,
-                Math.PI * 2
-            );
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(
-                plantX + 30 * scale,
-                plantY - 20 * scale,
-                20 * scale,
-                35 * scale,
-                -0.2 + sway * 0.01,
-                0,
-                Math.PI * 2
-            );
-            ctx.fill();
 
             // Pets Logic & Render
             petsRef.current.forEach((pet) => {
@@ -555,12 +408,17 @@ export default React.memo(function RoomCanvas2D({
                     pet.timer = 2 + Math.random() * 4;
 
                     if (isFocusing) {
-                        // Focus Mode: Quiet states only (Sit or Sleep)
+                        // Focus Mode: Relaxed (Walk, Sit, Sleep) - No high energy jumping/dancing
                         const rand = Math.random();
-                        if (pet.state === 'sleep') {
-                            pet.state = rand > 0.7 ? 'sit' : 'sleep'; // 30% chance to wake up and sit
+                        if (rand < 0.4) {
+                            pet.state = 'walk';
+                            pet.targetX = 50 + Math.random() * (W - 100);
+                            pet.targetY = Math.random() * 40 - 20;
+                            pet.dir = pet.targetX > pet.x ? 1 : -1;
+                        } else if (pet.state === 'sleep') {
+                            pet.state = rand > 0.7 ? 'sit' : 'sleep';
                         } else {
-                            pet.state = rand > 0.5 ? 'sleep' : 'sit'; // 50% chance to sleep
+                            pet.state = rand > 0.5 ? 'sleep' : 'sit';
                         }
                     } else {
                         // Normal Mode: All states
@@ -699,281 +557,10 @@ export default React.memo(function RoomCanvas2D({
 
             // Draw Pets
             sortedPets.forEach(pet => {
-                // Drawing Offsets
-                let bounce = 0;
-                let rotate = 0;
-                if (pet.state === 'walk') bounce = Math.abs(Math.sin(pet.frame)) * 8 * scale;
-                if (pet.state === 'jump') bounce = Math.sin(pet.frame) * 30 * scale;
-                if (pet.state === 'dance') {
-                    bounce = Math.abs(Math.sin(pet.frame)) * 5 * scale;
-                    rotate = Math.sin(pet.frame) * 0.1; // Wiggle
-                }
-                if (pet.state === 'eat') {
-                    bounce = Math.sin(pet.frame) * 2 * scale;
-                }
-
-                const breathe =
-                    pet.state === 'idle' || pet.state === 'sleep' || pet.state === 'sit'
-                        ? Math.sin(Date.now() / 300) * 2 * scale
-                        : 0;
-                const sleepSquish = pet.state === 'sleep' ? 15 * scale : 0;
-                const sitSquish = pet.state === 'sit' ? 5 * scale : 0;
-                // Use pet.y for depth offset
-                const py = floorY - 30 * scale - bounce + sleepSquish + sitSquish + pet.y * scale;
-
-                ctx.save();
-                ctx.translate(pet.x, py);
-                ctx.rotate(rotate);
-
-                // Eating Scale Effect (Munching)
-                let scaleX = scale;
-                let scaleY = scale;
-                if (pet.state === 'eat') {
-                    const munch = Math.sin(pet.frame) * 0.05;
-                    scaleX = scale * (1 + munch);
-                    scaleY = scale * (1 - munch);
-                }
-                ctx.scale(scaleX, scaleY);
-
-                // Emote Bubble
-                if (pet.emote) {
-                    ctx.save();
-                    ctx.globalAlpha = pet.emote.life;
-                    ctx.translate(0, -90 - pet.emote.yOffset);
-                    // Bubble
-                    ctx.fillStyle = "white";
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, 15, 12, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    // Tail
-                    ctx.beginPath();
-                    ctx.moveTo(0, 12);
-                    ctx.lineTo(-5, 18);
-                    ctx.lineTo(5, 15);
-                    ctx.fill();
-                    // Icon
-                    ctx.font = "14px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(pet.emote.type === 'heart' ? "❤️" : "🎵", 0, 1);
-                    ctx.restore();
-                }
-
-                // Supporter Crown
-                if (isSupporter && !pet.state.includes("sleep")) {
-                    ctx.font = "20px sans-serif";
-                    ctx.fillText("👑", -10, -75 - breathe);
-                }
-
-                // Name Tag
-                if (pet.state !== "sleep") {
-                    const nameY = -65 - breathe;
-                    ctx.save();
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-                    ctx.shadowColor = "rgba(0,0,0,0.1)";
-                    ctx.shadowBlur = 4;
-                    ctx.shadowOffsetY = 2;
-                    const textWidth = ctx.measureText(pet.data.name).width;
-                    drawRoundRect(
-                        ctx,
-                        -textWidth / 2 - 10,
-                        nameY - 14,
-                        textWidth + 20,
-                        20,
-                        10,
-                        "white"
-                    );
-                    ctx.shadowColor = "transparent";
-                    ctx.fillStyle = "#555";
-                    ctx.font = "bold 12px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText(pet.data.name, 0, nameY);
-                    ctx.restore();
-                }
-
-                if (pet.dir === -1) ctx.scale(-1, 1);
-                ctx.fillStyle = "rgba(0,0,0,0.1)";
-                ctx.beginPath();
-                ctx.ellipse(0, 30 + bounce / scale - sleepSquish / scale, 18, 6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = pet.data.color;
-                ctx.beginPath();
-                ctx.roundRect(
-                    -25 - breathe / 2,
-                    -35 + sleepSquish / scale + breathe,
-                    50 + breathe,
-                    50 - sleepSquish / scale,
-                    20
-                );
-                ctx.fill();
-
-                if (pet.id.includes("cat")) {
-                    ctx.beginPath();
-                    ctx.moveTo(-20, -25 + sleepSquish / scale);
-                    ctx.lineTo(-30, -45 + sleepSquish / scale);
-                    ctx.lineTo(-5, -25 + sleepSquish / scale);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.moveTo(20, -25 + sleepSquish / scale);
-                    ctx.lineTo(30, -45 + sleepSquish / scale);
-                    ctx.lineTo(5, -25 + sleepSquish / scale);
-                    ctx.fill();
-                } else if (pet.id.includes("bunny")) {
-                    ctx.beginPath();
-                    ctx.ellipse(-15, -45 + sleepSquish / scale, 6, 15, -0.2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.ellipse(15, -45 + sleepSquish / scale, 6, 15, 0.2, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                const eyeY = -15 + sleepSquish / scale + breathe;
-                if (pet.state === "sleep") {
-                    ctx.strokeStyle = "#555";
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-15, eyeY);
-                    ctx.lineTo(-5, eyeY);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(5, eyeY);
-                    ctx.lineTo(15, eyeY);
-                    ctx.stroke();
-                } else {
-                    ctx.fillStyle = "#333";
-                    if (pet.blinkTimer > 0) {
-                        ctx.beginPath();
-                        ctx.arc(-10, eyeY, 3, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.beginPath();
-                        ctx.arc(10, eyeY, 3, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else {
-                        ctx.fillRect(-13, eyeY, 6, 2);
-                        ctx.fillRect(7, eyeY, 6, 2);
-                    }
-                    ctx.fillStyle = pet.data.blush;
-                    ctx.beginPath();
-                    ctx.arc(-18, eyeY + 8, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(18, eyeY + 8, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    if (pet.id.includes("duck")) {
-                        ctx.fillStyle = "#f97316";
-                        ctx.beginPath();
-                        ctx.ellipse(0, eyeY + 5, 6, 3, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else if (pet.id.includes("pig")) {
-                        ctx.fillStyle = "#f9a8d4";
-                        ctx.beginPath();
-                        ctx.ellipse(0, eyeY + 5, 8, 5, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.fillStyle = "#db2777";
-                        ctx.beginPath();
-                        ctx.arc(-3, eyeY + 5, 1.5, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.beginPath();
-                        ctx.arc(3, eyeY + 5, 1.5, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-                ctx.restore();
+                drawPet(ctx, pet, floorY, scale, isSupporter);
             });
 
-            // Particles
-            particlesRef.current.forEach((p, i) => {
-                p.y -= 0.5;
-                p.life -= 0.01;
-                if (p.life <= 0) particlesRef.current.splice(i, 1);
-                ctx.globalAlpha = p.life;
-                if (p.type === "heart") {
-                    ctx.fillStyle = "#fda4af";
-                    ctx.font = "20px sans-serif";
-                    ctx.fillText("❤️", p.x, p.y);
-                } else if (p.type === "crumb") {
-                    ctx.fillStyle = "#d97706";
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-                    ctx.fill();
-                } else {
-                    ctx.fillStyle = "#94a3b8";
-                    ctx.font = "bold 16px sans-serif";
-                    ctx.fillText("Zzz", p.x, p.y);
-                }
-                ctx.globalAlpha = 1;
-            });
 
-            // --- VISUAL EFFECTS OVERLAY ---
-            let overlayColor = "transparent";
-
-            if (activeSounds.includes("sound_rain")) {
-                // Rain: Dark Blue Tint
-                overlayColor = "rgba(0, 15, 40, 0.3)";
-
-                // Raindrops
-                ctx.strokeStyle = "rgba(186, 230, 253, 0.4)";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                rainRef.current.forEach((r) => {
-                    r.y += r.speed;
-                    if (r.y > H) r.y = -20;
-                    ctx.moveTo(r.x, r.y);
-                    ctx.lineTo(r.x - 2, r.y + 15);
-                });
-                ctx.stroke();
-            }
-            else if (activeSounds.includes("sound_fire")) {
-                // Fire: Warm Orange Tint + Flicker
-                const flicker = Math.sin(Date.now() / 100) * 0.05 + 0.05;
-                overlayColor = `rgba(60, 20, 0, ${0.1 + flicker})`;
-
-                // Fire Glow (Radial)
-                const fireGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H);
-                fireGrad.addColorStop(0, `rgba(255, 100, 0, ${0.1 + flicker})`);
-                fireGrad.addColorStop(1, "rgba(0,0,0,0)");
-                ctx.fillStyle = fireGrad;
-                ctx.fillRect(0, 0, W, H);
-
-                // Embers (Simple procedural particles)
-                ctx.fillStyle = "#fdba74";
-                const time = Date.now() / 1000;
-                for (let i = 0; i < 20; i++) {
-                    const ex = (Math.sin(i * 123 + time) * 0.5 + 0.5) * W;
-                    const ey = H - ((time * 50 + i * 100) % H);
-                    const size = Math.random() * 3 * scale;
-                    ctx.globalAlpha = 1 - (ey / H); // Fade out as they go up
-                    ctx.beginPath();
-                    ctx.arc(ex, ey, size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.globalAlpha = 1;
-            }
-            else if (activeSounds.includes("sound_night")) {
-                // Night: Deep Blue/Purple Tint
-                overlayColor = "rgba(10, 10, 35, 0.5)";
-            }
-            else if (activeSounds.includes("sound_waves")) {
-                // Ocean: Cyan/Teal Tint
-                overlayColor = "rgba(0, 40, 50, 0.2)";
-            }
-
-            // Apply Global Overlay
-            if (overlayColor !== "transparent") {
-                ctx.fillStyle = overlayColor;
-                ctx.fillRect(0, 0, W, H);
-            }
-
-            // Vignette (Always on for depth)
-            const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.6, W / 2, H / 2, H * 1.5);
-            vignette.addColorStop(0, "rgba(0,0,0,0)");
-            vignette.addColorStop(1, "rgba(0,0,0,0.4)");
-            ctx.fillStyle = vignette;
-            ctx.fillRect(0, 0, W, H);
-
-            // Theme Light Color (Subtle ambient)
-            ctx.fillStyle = themeData.lightColor;
-            ctx.fillRect(0, 0, W, H);
             requestRef.current = requestAnimationFrame(render);
         };
 
@@ -1006,6 +593,10 @@ export default React.memo(function RoomCanvas2D({
             const py = canvasRef.current.height * 0.65 - 30; // Approx floor Y
             if (Math.abs(pet.x - x) < 50 && Math.abs(y - py) < 80) {
                 // Petting!
+                const now = Date.now();
+                if (now - pet.lastPetTime < 1500) return; // 1.5s Cooldown
+                pet.lastPetTime = now;
+
                 pet.state = "jump";
                 pet.frame = 0;
                 // Spawn Heart

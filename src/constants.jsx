@@ -207,6 +207,24 @@ export const SHOP_ITEMS = [
         text: "stone-800",
         desc: "คาเฟ่สไตล์มินิมอล",
     },
+    {
+        id: "theme_boho",
+        category: "room",
+        name: "Boho Bedroom",
+        icon: "🍂",
+        price: 1000,
+        type: "indoor",
+        bgTop: "#e3d5ca", // Soft Taupe
+        bgBot: "#d6ccc2",
+        wall: "#eddede", // Pale Pinkish Beige
+        floor: "#f5ebe0", // Light Wood
+        accent: "#d4a373", // Rattan
+        shadow: "#cbb8a9",
+        windowSky: "#7dd3fc",
+        lightColor: "rgba(255, 248, 240, 0.3)",
+        text: "stone-600",
+        desc: "ห้องนอนสไตล์โบฮีเมียน",
+    },
 
     // 🎵 SOUNDS
     {
