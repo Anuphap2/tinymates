@@ -12,7 +12,7 @@ import {
 export default React.memo(function RoomCanvas2D({
     equippedPets,
     activeTheme,
-    activeSound,
+    activeSounds = [],
     onAddCoins,
     isFocusing,
     isSupporter,
@@ -24,7 +24,7 @@ export default React.memo(function RoomCanvas2D({
     const propsRef = useRef({
         equippedPets,
         activeTheme,
-        activeSound,
+        activeSounds,
         isFocusing,
         isSupporter
     });
@@ -34,11 +34,11 @@ export default React.memo(function RoomCanvas2D({
         propsRef.current = {
             equippedPets,
             activeTheme,
-            activeSound,
+            activeSounds,
             isFocusing,
             isSupporter
         };
-    }, [equippedPets, activeTheme, activeSound, isFocusing, isSupporter]);
+    }, [equippedPets, activeTheme, activeSounds, isFocusing, isSupporter]);
 
     const petsRef = useRef([]);
     const cloudsRef = useRef([]);
@@ -62,6 +62,10 @@ export default React.memo(function RoomCanvas2D({
                 timer: Math.random() * 3,
                 frame: 0,
                 blinkTimer: Math.random() * 200,
+                lastX: 0, // For stuck detection
+                stuckTimer: 0,
+                emote: null, // { type: 'heart' | 'music', life: 1.0 }
+                emoteTimer: Math.random() * 500,
             });
         });
 
@@ -91,7 +95,7 @@ export default React.memo(function RoomCanvas2D({
 
         const render = () => {
             // Access latest props from ref
-            const { activeTheme, activeSound, isFocusing, isSupporter } = propsRef.current;
+            const { activeTheme, activeSounds, isFocusing, isSupporter } = propsRef.current;
 
             const themeData = SHOP_ITEMS.find((i) => i.id === activeTheme) || SHOP_ITEMS[5];
 
@@ -171,7 +175,7 @@ export default React.memo(function RoomCanvas2D({
                 ctx.fillStyle = skyGrad;
                 ctx.fillRect(winX, winY, winW, winH);
 
-                if (!activeSound?.includes("rain")) {
+                if (!activeSounds.includes("sound_rain") && !activeSounds.includes("sound_wind")) {
                     ctx.fillStyle = "#fff";
                     cloudsRef.current.forEach((c) => {
                         c.x += c.speed;
@@ -185,7 +189,7 @@ export default React.memo(function RoomCanvas2D({
                 }
 
                 // Stars for Night Sound (Window View)
-                if (activeSound === "sound_night") {
+                if (activeSounds.includes("sound_night")) {
                     ctx.fillStyle = "#fff";
                     const time = Date.now() / 1000;
                     for (let i = 0; i < 20; i++) {
@@ -239,7 +243,8 @@ export default React.memo(function RoomCanvas2D({
                 ctx.fill();
             } else {
                 // Outdoor Sky Elements (Clouds/Sun directly on sky)
-                if (!activeSound?.includes("rain")) {
+                // Outdoor Sky Elements (Clouds/Sun directly on sky)
+                if (!activeSounds.includes("sound_rain") && !activeSounds.includes("sound_wind")) {
                     ctx.fillStyle = "#fff";
                     cloudsRef.current.forEach((c) => {
                         c.x += c.speed;
@@ -252,7 +257,7 @@ export default React.memo(function RoomCanvas2D({
                     });
                 }
                 // Stars for Night Sound (Outdoor View)
-                if (activeSound === "sound_night") {
+                if (activeSounds.includes("sound_night")) {
                     ctx.fillStyle = "#fff";
                     const time = Date.now() / 1000;
                     for (let i = 0; i < 50; i++) {
@@ -525,19 +530,55 @@ export default React.memo(function RoomCanvas2D({
                     } else {
                         // Normal Mode: All states
                         const rand = Math.random();
-                        if (rand < 0.35) pet.state = 'idle';
-                        else if (rand < 0.55) {
+                        if (rand < 0.3) pet.state = 'idle';
+                        else if (rand < 0.5) {
                             pet.state = 'walk';
-                            pet.targetX = 100 + Math.random() * (W - 200);
+                            // Ensure target is within bounds (padding 50px)
+                            pet.targetX = 50 + Math.random() * (W - 100);
                             pet.dir = pet.targetX > pet.x ? 1 : -1;
                         }
-                        else if (rand < 0.8) pet.state = 'sit';
-                        else if (rand < 0.9) {
+                        else if (rand < 0.7) pet.state = 'sit';
+                        else if (rand < 0.85) {
                             pet.state = 'jump';
+                            pet.frame = 0;
+                        }
+                        else if (rand < 0.95) {
+                            pet.state = 'dance'; // New State!
                             pet.frame = 0;
                         }
                         else pet.state = 'sleep';
                     }
+                }
+
+                // Emote Logic
+                pet.emoteTimer--;
+                if (pet.emoteTimer <= 0) {
+                    pet.emote = {
+                        type: Math.random() > 0.5 ? 'heart' : 'music',
+                        life: 1.0,
+                        yOffset: 0
+                    };
+                    pet.emoteTimer = 300 + Math.random() * 500;
+                }
+                if (pet.emote) {
+                    pet.emote.life -= 0.01;
+                    pet.emote.yOffset += 0.2;
+                    if (pet.emote.life <= 0) pet.emote = null;
+                }
+
+                // Stuck Detection (Watchdog)
+                if (pet.state === 'walk') {
+                    if (Math.abs(pet.x - pet.lastX) < 0.1) {
+                        pet.stuckTimer++;
+                        if (pet.stuckTimer > 60) { // Stuck for ~1 sec
+                            pet.state = 'idle'; // Force stop
+                            pet.timer = 1; // Reset timer
+                            pet.stuckTimer = 0;
+                        }
+                    } else {
+                        pet.stuckTimer = 0;
+                    }
+                    pet.lastX = pet.x;
                 }
 
                 // State Execution
@@ -555,6 +596,12 @@ export default React.memo(function RoomCanvas2D({
                         pet.state = 'idle';
                         pet.frame = 0;
                     }
+                } else if (pet.state === 'dance') {
+                    pet.frame += 0.2;
+                    if (pet.frame > Math.PI * 4) { // Dance for 2 cycles
+                        pet.state = 'idle';
+                        pet.frame = 0;
+                    }
                 } else if (pet.state === 'sleep') {
                     if (Math.random() < 0.01)
                         particlesRef.current.push({
@@ -567,8 +614,13 @@ export default React.memo(function RoomCanvas2D({
 
                 // Drawing Offsets
                 let bounce = 0;
+                let rotate = 0;
                 if (pet.state === 'walk') bounce = Math.abs(Math.sin(pet.frame)) * 8 * scale;
                 if (pet.state === 'jump') bounce = Math.sin(pet.frame) * 30 * scale;
+                if (pet.state === 'dance') {
+                    bounce = Math.abs(Math.sin(pet.frame)) * 5 * scale;
+                    rotate = Math.sin(pet.frame) * 0.1; // Wiggle
+                }
 
                 const breathe =
                     pet.state === 'idle' || pet.state === 'sleep' || pet.state === 'sit'
@@ -580,7 +632,32 @@ export default React.memo(function RoomCanvas2D({
 
                 ctx.save();
                 ctx.translate(pet.x, py);
+                ctx.rotate(rotate);
                 ctx.scale(scale, scale);
+
+                // Emote Bubble
+                if (pet.emote) {
+                    ctx.save();
+                    ctx.globalAlpha = pet.emote.life;
+                    ctx.translate(0, -90 - pet.emote.yOffset);
+                    // Bubble
+                    ctx.fillStyle = "white";
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 15, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Tail
+                    ctx.beginPath();
+                    ctx.moveTo(0, 12);
+                    ctx.lineTo(-5, 18);
+                    ctx.lineTo(5, 15);
+                    ctx.fill();
+                    // Icon
+                    ctx.font = "14px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(pet.emote.type === 'heart' ? "❤️" : "🎵", 0, 1);
+                    ctx.restore();
+                }
 
                 // Supporter Crown
                 if (isSupporter && !pet.state.includes("sleep")) {
@@ -721,35 +798,74 @@ export default React.memo(function RoomCanvas2D({
                 ctx.globalAlpha = 1;
             });
 
-            if (activeSound === "sound_rain") {
-                ctx.strokeStyle = "rgba(186, 230, 253, 0.5)";
+            // --- VISUAL EFFECTS OVERLAY ---
+            let overlayColor = "transparent";
+
+            if (activeSounds.includes("sound_rain")) {
+                // Rain: Dark Blue Tint
+                overlayColor = "rgba(0, 15, 40, 0.3)";
+
+                // Raindrops
+                ctx.strokeStyle = "rgba(186, 230, 253, 0.4)";
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 rainRef.current.forEach((r) => {
                     r.y += r.speed;
-                    if (r.y > floorY) r.y = 0;
+                    if (r.y > H) r.y = -20;
                     ctx.moveTo(r.x, r.y);
-                    ctx.lineTo(r.x - 3, r.y + 15);
+                    ctx.lineTo(r.x - 2, r.y + 15);
                 });
                 ctx.stroke();
             }
+            else if (activeSounds.includes("sound_fire")) {
+                // Fire: Warm Orange Tint + Flicker
+                const flicker = Math.sin(Date.now() / 100) * 0.05 + 0.05;
+                overlayColor = `rgba(60, 20, 0, ${0.1 + flicker})`;
 
-            // Fire Glow
-            if (activeSound === "sound_fire") {
-                const flicker = Math.sin(Date.now() / 100) * 0.1 + 0.1;
+                // Fire Glow (Radial)
                 const fireGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H);
-                fireGrad.addColorStop(0, `rgba(251, 146, 60, ${flicker})`);
+                fireGrad.addColorStop(0, `rgba(255, 100, 0, ${0.1 + flicker})`);
                 fireGrad.addColorStop(1, "rgba(0,0,0,0)");
                 ctx.fillStyle = fireGrad;
                 ctx.fillRect(0, 0, W, H);
+
+                // Embers (Simple procedural particles)
+                ctx.fillStyle = "#fdba74";
+                const time = Date.now() / 1000;
+                for (let i = 0; i < 20; i++) {
+                    const ex = (Math.sin(i * 123 + time) * 0.5 + 0.5) * W;
+                    const ey = H - ((time * 50 + i * 100) % H);
+                    const size = Math.random() * 3 * scale;
+                    ctx.globalAlpha = 1 - (ey / H); // Fade out as they go up
+                    ctx.beginPath();
+                    ctx.arc(ex, ey, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
             }
-            // Vignette
+            else if (activeSounds.includes("sound_night")) {
+                // Night: Deep Blue/Purple Tint
+                overlayColor = "rgba(10, 10, 35, 0.5)";
+            }
+            else if (activeSounds.includes("sound_waves")) {
+                // Ocean: Cyan/Teal Tint
+                overlayColor = "rgba(0, 40, 50, 0.2)";
+            }
+
+            // Apply Global Overlay
+            if (overlayColor !== "transparent") {
+                ctx.fillStyle = overlayColor;
+                ctx.fillRect(0, 0, W, H);
+            }
+
+            // Vignette (Always on for depth)
             const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.6, W / 2, H / 2, H * 1.5);
             vignette.addColorStop(0, "rgba(0,0,0,0)");
             vignette.addColorStop(1, "rgba(0,0,0,0.4)");
             ctx.fillStyle = vignette;
             ctx.fillRect(0, 0, W, H);
 
+            // Theme Light Color (Subtle ambient)
             ctx.fillStyle = themeData.lightColor;
             ctx.fillRect(0, 0, W, H);
             requestRef.current = requestAnimationFrame(render);
@@ -779,6 +895,8 @@ export default React.memo(function RoomCanvas2D({
                     type: "heart",
                     life: 1.5,
                 });
+                // Award Coins
+                propsRef.current.onAddCoins(10);
             }
         });
     };

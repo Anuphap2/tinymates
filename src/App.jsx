@@ -44,8 +44,9 @@ export default function CozyFocusApp() {
   ]));
   const [equippedPets, setEquippedPets] = useState(() => SecureStorage.getItem("equippedPets", ["pet_cat"]));
   const [activeTheme, setActiveTheme] = useState(() => SecureStorage.getItem("activeTheme", "theme_day"));
-  const [activeSound, setActiveSound] = useState(() => SecureStorage.getItem("activeSound", "sound_rain"));
-  const [volume, setVolume] = useState(0.5);
+  const [activeSounds, setActiveSounds] = useState(() => SecureStorage.getItem("activeSounds", ["sound_rain"]));
+  const [ambientVolume, setAmbientVolume] = useState(0.5);
+  const [musicVolume, setMusicVolume] = useState(0.3);
 
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [timerMode, setTimerMode] = useState("focus");
@@ -78,10 +79,10 @@ export default function CozyFocusApp() {
     SecureStorage.setItem("inventory", inventory);
     SecureStorage.setItem("equippedPets", equippedPets);
     SecureStorage.setItem("activeTheme", activeTheme);
-    SecureStorage.setItem("activeSound", activeSound);
+    SecureStorage.setItem("activeSounds", activeSounds);
     SecureStorage.setItem("tasks", tasks);
     SecureStorage.setItem("isSupporter", isSupporter);
-  }, [coins, inventory, equippedPets, activeTheme, activeSound, tasks, isSupporter]);
+  }, [coins, inventory, equippedPets, activeTheme, activeSounds, tasks, isSupporter]);
 
   // Audio Engine Init
   // Audio Engine Init
@@ -167,49 +168,88 @@ export default function CozyFocusApp() {
   }, [isRunning, timeLeft, timerMode]);
 
   // Audio
-  const handleToggleSound = (soundId) => {
-    const ctx = AudioEngine.init();
-    if (activeSound === soundId) {
-      AudioEngine.stopAll();
-      setActiveSound(null);
-      return;
+  // Audio
+  // Audio
+  const playSoundById = async (soundId, vol) => {
+    try {
+      switch (soundId) {
+        case "sound_rain": await AudioEngine.playRain(vol); break;
+        case "sound_fire": await AudioEngine.playFire(vol); break;
+        case "sound_waves": await AudioEngine.playWaves(vol); break;
+        case "sound_night": await AudioEngine.playCrickets(vol); break;
+        case "sound_white": await AudioEngine.playWhite(vol); break;
+        case "sound_wind": await AudioEngine.playWind(vol); break;
+        default: break;
+      }
+    } catch (e) {
+      console.error("Error playing sound:", e);
     }
-    setActiveSound(soundId);
-    let gainNode;
-    switch (soundId) {
-      case "sound_rain":
-        gainNode = AudioEngine.playRain(volume);
-        break;
-      case "sound_fire":
-        gainNode = AudioEngine.playFire(volume);
-        break;
-      case "sound_waves":
-        gainNode = AudioEngine.playWaves(volume);
-        break;
-      case "sound_night":
-        gainNode = AudioEngine.playCrickets(volume);
-        break;
-      case "sound_white":
-        gainNode = AudioEngine.playWhite(volume);
-        break;
-      case "sound_wind":
-        gainNode = AudioEngine.playRain(volume * 0.5);
-        break;
-      default:
-        break;
-    }
-    gainNodeRef.current = gainNode;
   };
 
-  useEffect(() => {
-    if (gainNodeRef.current && activeSound) {
-      gainNodeRef.current.gain.setTargetAtTime(
-        volume * (activeSound === "sound_night" ? 0.1 : 0.5),
-        AudioEngine.ctx.currentTime,
-        0.1
-      );
+  const handleToggleSound = async (soundId) => {
+    const ctx = AudioEngine.init();
+
+    if (activeSounds.includes(soundId)) {
+      // Remove sound
+      AudioEngine.stopAmbient(soundId);
+      setActiveSounds(prev => prev.filter(id => id !== soundId));
+    } else {
+      // Add sound
+      if (activeSounds.length >= 3) {
+        showToast("เปิดพร้อมกันได้สูงสุด 3 เสียงนะ", "error");
+        return;
+      }
+      setActiveSounds(prev => [...prev, soundId]);
+      await playSoundById(soundId, ambientVolume);
     }
-  }, [volume, activeSound]);
+  };
+
+  // Music Logic
+  const [isMusicOn, setIsMusicOn] = useState(true);
+
+  useEffect(() => {
+    const manageMusic = async () => {
+      if (isMusicOn) {
+        await AudioEngine.playMusic("/src/assets/sounds/music.mp3", musicVolume);
+      } else {
+        AudioEngine.stopMusic();
+      }
+    };
+    manageMusic();
+  }, [isMusicOn]); // Volume handled separately
+
+  // Update Music Volume independently
+  useEffect(() => {
+    AudioEngine.setMusicVolume(musicVolume);
+  }, [musicVolume]);
+
+  // Update Ambient Volume
+  useEffect(() => {
+    AudioEngine.setAmbientVolume(ambientVolume);
+  }, [ambientVolume]);
+
+  // Restore active sounds on mount/resume
+
+
+  useEffect(() => {
+    const restoreSounds = async () => {
+      for (const id of activeSounds) {
+        await playSoundById(id, ambientVolume);
+      }
+    };
+    // We need a user interaction first usually.
+    // But let's try.
+    if (activeSounds.length > 0) restoreSounds();
+  }, []); // On mount only? Or when activeSounds changes? 
+  // If we put activeSounds here, it will re-trigger on every toggle.
+  // handleToggleSound already plays. So we only need this for initial load.
+
+  // Actually, better to just let handleToggleSound do the work for user interactions.
+  // For initial load, we might need a "start" button or just rely on the first click.
+  // Let's leave this effect empty for now and rely on user toggling or a "Resume" feature if needed.
+  // Actually, the previous code didn't auto-play on load perfectly either without click.
+  // Let's just ensure volume updates work.
+
 
   // Shop Logic
   const handleBuy = (item) => {
@@ -258,6 +298,7 @@ export default function CozyFocusApp() {
   };
   const handleAddCoins = useCallback((amount) => {
     setCoins((prev) => prev + amount);
+    showToast(`+${amount} Coins`, "success");
   }, []);
   const deleteTask = (id) =>
     setTasks((prev) => prev.filter((t) => t.id !== id));
@@ -334,6 +375,61 @@ export default function CozyFocusApp() {
     SHOP_ITEMS.find((i) => i.id === activeTheme) || SHOP_ITEMS[5];
   const isDark = activeTheme === "theme_night";
 
+  // Reusable To-Do Content
+  const renderTodoContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar p-1">
+        {tasks.length === 0 && (
+          <div className="text-xs opacity-50 text-center py-4">
+            เพิ่มงานที่ต้องทำตรงนี้...
+          </div>
+        )}
+        {tasks.map((t) => (
+          <div key={t.id} className="flex items-center gap-2 text-sm group bg-white/50 p-2 rounded-lg hover:bg-white/80 transition-colors">
+            <button
+              onClick={() => toggleTask(t.id)}
+              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${t.done
+                ? "bg-indigo-500 border-indigo-500 text-white"
+                : "border-slate-400 bg-white"
+                }`}
+            >
+              {t.done && <Check size={12} />}
+            </button>
+            <span
+              className={`flex-1 truncate ${t.done ? "line-through opacity-50" : ""
+                }`}
+            >
+              {t.text}
+            </span>
+            <button
+              onClick={() => deleteTask(t.id)}
+              className="opacity-40 hover:opacity-100 text-slate-400 hover:text-red-500 p-1 transition-all"
+              title="Delete task"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200/50">
+        <input
+          className={`flex-1 text-sm bg-white/50 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all ${isDark ? "placeholder-slate-500 bg-slate-800/50 border-slate-700 text-white" : "placeholder-slate-400"
+            }`}
+          placeholder="พิมพ์งานใหม่..."
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addTask()}
+        />
+        <button
+          onClick={addTask}
+          className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-3 py-2 shadow-sm transition-all active:scale-95"
+        >
+          <Plus size={20} />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className="relative w-full h-screen overflow-hidden font-sans select-none transition-colors duration-1000"
@@ -344,13 +440,11 @@ export default function CozyFocusApp() {
       <RoomCanvas2D
         equippedPets={equippedPets}
         activeTheme={activeTheme}
-        activeSound={activeSound}
+        activeSound={activeSounds.length > 0 ? activeSounds[0] : null}
+        activeSounds={activeSounds}
         isFocusing={isRunning && timerMode === "focus"} // Pass focus state
         isSupporter={isSupporter}
-        onAddCoins={(n) => {
-          setCoins((c) => c + n);
-          showToast(`+${n} Coins`, "success");
-        }}
+        onAddCoins={handleAddCoins}
       />
 
       <div
@@ -360,74 +454,30 @@ export default function CozyFocusApp() {
         }}
       ></div>
 
-      {/* LEFT SIDE: TO-DO LIST (Hidden on mobile, visible on md+) */}
+      {/* LEFT SIDE: TO-DO LIST (Desktop Only) */}
       <div className="absolute top-6 left-6 z-40 w-72 pointer-events-auto hidden md:block">
         <div
-          className={`backdrop-blur-xl p-4 rounded-[20px] shadow-lg border border-white/20 flex flex-col gap-3 transition-colors duration-500 ${isDark ? "bg-slate-900/60 text-white" : "bg-white/60 text-slate-700"
-            }`}
+          className={`backdrop-blur-xl p-5 rounded-[24px] shadow-xl border border-white/40 flex flex-col gap-3 transition-colors duration-500 ${isDark ? "bg-slate-900/80 text-white" : "bg-white/80 text-slate-700"
+            } transform hover:scale-[1.02] transition-transform duration-300`}
         >
-          <div className="flex items-center gap-2 font-bold text-sm opacity-80">
-            <ListTodo size={16} /> To-Do List
+          <div className="flex items-center gap-2 font-bold text-lg opacity-90 tracking-tight">
+            <div className="p-1.5 bg-indigo-100 text-indigo-500 rounded-lg">
+              <ListTodo size={18} />
+            </div>
+            To-Do List
           </div>
-          <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-            {tasks.length === 0 && (
-              <div className="text-xs opacity-50 text-center py-4">
-                เพิ่มงานที่ต้องทำตรงนี้...
-              </div>
-            )}
-            {tasks.map((t) => (
-              <div key={t.id} className="flex items-center gap-2 text-sm group bg-white/50 p-2 rounded-lg hover:bg-white/80 transition-colors">
-                <button
-                  onClick={() => toggleTask(t.id)}
-                  className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${t.done
-                    ? "bg-indigo-500 border-indigo-500 text-white"
-                    : "border-slate-400 bg-white"
-                    }`}
-                >
-                  {t.done && <Check size={12} />}
-                </button>
-                <span
-                  className={`flex-1 truncate ${t.done ? "line-through opacity-50" : ""
-                    }`}
-                >
-                  {t.text}
-                </span>
-                <button
-                  onClick={() => deleteTask(t.id)}
-                  className="opacity-40 hover:opacity-100 text-slate-400 hover:text-red-500 p-1 transition-all"
-                  title="Delete task"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2 mt-2">
-            <input
-              className={`flex-1 text-sm bg-white/50 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all ${isDark ? "placeholder-slate-500 bg-slate-800/50 border-slate-700 text-white" : "placeholder-slate-400"
-                }`}
-              placeholder="พิมพ์งานใหม่..."
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addTask()}
-            />
-            <button
-              onClick={addTask}
-              className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-3 py-2 shadow-sm transition-all active:scale-95"
-            >
-              <Plus size={20} />
-            </button>
-          </div>
+          {renderTodoContent()}
         </div>
       </div>
 
       {/* CENTER: TIMER */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto w-full max-w-[90%] md:max-w-auto flex justify-center">
+      {/* Adjusted top position for mobile to avoid overlap with To-Do toggle/Coins */}
+      <div className="absolute top-24 md:top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-full max-w-[90%] md:max-w-auto flex justify-center transition-all duration-300">
         <div
-          className={`backdrop-blur-xl px-6 py-3 rounded-[2rem] shadow-sm border border-white/30 flex flex-col items-center gap-1 transition-colors duration-500 ${isDark ? "bg-slate-900/60 text-white" : "bg-white/60 text-slate-700"
+          className={`backdrop-blur-2xl px-8 py-5 rounded-[3rem] shadow-2xl border border-white/40 flex flex-col items-center gap-2 transition-colors duration-500 ${isDark ? "bg-slate-900/70 text-white shadow-indigo-500/20" : "bg-white/70 text-slate-700 shadow-xl"
             }`}
         >
-          <div className="flex gap-1 mb-1">
+          <div className="flex gap-1.5 mb-1 bg-black/5 p-1 rounded-full">
             {Object.keys(TIMER_MODES).map((m) => (
               <button
                 key={m}
@@ -436,17 +486,17 @@ export default function CozyFocusApp() {
                   setTimerMode(m);
                   setTimeLeft(TIMER_MODES[m].min * 60);
                 }}
-                className={`px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${timerMode === m
-                  ? "bg-indigo-500 text-white"
-                  : "bg-black/5 hover:bg-black/10"
+                className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${timerMode === m
+                  ? "bg-white text-indigo-600 shadow-sm scale-105"
+                  : "text-slate-500 hover:bg-white/50"
                   }`}
               >
                 {TIMER_MODES[m].label}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-5xl font-black font-mono tracking-tighter tabular-nums opacity-90">
+          <div className="flex items-center gap-6">
+            <span className="text-7xl font-black font-mono tracking-tighter tabular-nums opacity-90 drop-shadow-sm">
               {Math.floor(timeLeft / 60)
                 .toString()
                 .padStart(2, "0")}
@@ -457,13 +507,13 @@ export default function CozyFocusApp() {
                 setIsRunning(!isRunning);
                 AudioEngine.init();
               }}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg transition-all active:scale-90 hover:scale-105 ${isRunning ? "bg-amber-400" : "bg-indigo-500"
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all active:scale-90 hover:scale-110 hover:shadow-xl ${isRunning ? "bg-amber-400 rotate-0" : "bg-indigo-500 hover:rotate-6"
                 }`}
             >
               {isRunning ? (
-                <Pause size={20} fill="currentColor" />
+                <Pause size={28} fill="currentColor" />
               ) : (
-                <Play size={20} fill="currentColor" className="ml-1" />
+                <Play size={28} fill="currentColor" className="ml-1" />
               )}
             </button>
           </div>
@@ -472,11 +522,20 @@ export default function CozyFocusApp() {
 
       {/* RIGHT: COINS & MENU */}
       <div className="absolute top-6 right-6 z-40 flex flex-col gap-3 items-end pointer-events-auto">
-        <div className="bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 text-slate-700 transform hover:scale-105 transition-transform cursor-default border border-white/40">
-          <Coins size={18} className="text-yellow-500 fill-yellow-500" />
-          <span>{coins}</span>
+        <div className="bg-white/90 backdrop-blur-md px-5 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 text-slate-700 transform hover:scale-105 transition-transform cursor-default border-2 border-white/50 ring-2 ring-yellow-100">
+          <Coins size={20} className="text-yellow-500 fill-yellow-500 drop-shadow-sm" />
+          <span className="text-lg">{coins}</span>
         </div>
         <div className="flex gap-3 flex-col md:flex-row">
+          {/* Mobile Only To-Do Button */}
+          <div className="md:hidden">
+            <ControlButton
+              icon={<ListTodo />}
+              color="text-indigo-500"
+              onClick={() => setActiveModal("todo")}
+              label="To-Do"
+            />
+          </div>
           <ControlButton
             icon={<MessageCircle />}
             color="text-blue-500"
@@ -508,16 +567,41 @@ export default function CozyFocusApp() {
             }`}
         >
           <div className="flex items-center gap-3 opacity-80 shrink-0 w-full md:w-auto justify-center">
-            <Volume2 size={20} />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-full md:w-20 accent-indigo-500 h-1.5 bg-slate-300/50 rounded-lg appearance-none cursor-pointer"
-            />
+            {/* Music Control */}
+            <div className="flex items-center gap-2 bg-slate-100/50 px-3 py-1.5 rounded-xl">
+              <button
+                onClick={() => setIsMusicOn(!isMusicOn)}
+                className={`p-1.5 rounded-full transition-all ${isMusicOn ? "bg-indigo-100 text-indigo-500" : "bg-slate-200 text-slate-400"}`}
+                title="Toggle Music"
+              >
+                <Music size={16} />
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={musicVolume}
+                onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                className="w-16 md:w-20 accent-indigo-500 h-1.5 bg-slate-300/50 rounded-lg appearance-none cursor-pointer"
+                title="Music Volume"
+              />
+            </div>
+
+            {/* Ambient Control */}
+            <div className="flex items-center gap-2 bg-slate-100/50 px-3 py-1.5 rounded-xl">
+              <Volume2 size={16} className="text-slate-500" />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={ambientVolume}
+                onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
+                className="w-16 md:w-20 accent-teal-500 h-1.5 bg-slate-300/50 rounded-lg appearance-none cursor-pointer"
+                title="Ambient Volume"
+              />
+            </div>
           </div>
           <div className="hidden md:block w-px h-8 bg-slate-300/30 shrink-0"></div>
           <div className="flex gap-2 overflow-x-auto pb-1 w-full md:w-auto no-scrollbar">
@@ -525,8 +609,8 @@ export default function CozyFocusApp() {
               <button
                 key={s.id}
                 onClick={() => handleBuy(s)}
-                className={`relative shrink-0 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-all hover:scale-105 active:scale-95 ${activeSound === s.id
-                  ? "bg-indigo-100 text-indigo-600 shadow-inner ring-2 ring-indigo-200"
+                className={`relative shrink-0 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-all hover:scale-105 active:scale-95 ${activeSounds.includes(s.id)
+                  ? "bg-teal-100 text-teal-700 shadow-inner ring-2 ring-teal-200"
                   : "bg-white/50 hover:bg-white"
                   }`}
               >
@@ -586,6 +670,11 @@ export default function CozyFocusApp() {
                 {activeModal === "donate" && (
                   <>
                     <Heart className="text-red-500" /> Support
+                  </>
+                )}
+                {activeModal === "todo" && (
+                  <>
+                    <ListTodo className="text-indigo-500" /> To-Do List
                   </>
                 )}
               </h2>
@@ -789,6 +878,12 @@ export default function CozyFocusApp() {
                     08x-xxx-xxxx
                   </span>
                 </button>
+              </div>
+            )}
+
+            {activeModal === "todo" && (
+              <div className="p-6 h-full bg-slate-50/50">
+                {renderTodoContent()}
               </div>
             )}
           </div>
