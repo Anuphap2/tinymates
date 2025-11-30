@@ -1,3 +1,8 @@
+import rainSound from '../assets/sounds/rain.ogg';
+import fireSound from '../assets/sounds/fire.ogg';
+import wavesSound from '../assets/sounds/ocean-waves-376898.mp3';
+import cricketsSound from '../assets/sounds/crickets-26444.mp3';
+
 export const AudioEngine = {
     ctx: null,
     // Map to store active ambient sounds: id -> { source, gain, nodes: [], multiplier: 1, loading: boolean }
@@ -133,23 +138,23 @@ export const AudioEngine = {
     },
 
     playRain(vol) {
-        return this.playAmbient("sound_rain", "/src/assets/sounds/rain.ogg", vol, 1.0);
+        return this.playAmbient("sound_rain", rainSound, vol, 1.0);
     },
 
     playFire(vol) {
-        return this.playAmbient("sound_fire", "/src/assets/sounds/fire.ogg", vol, 1.0);
+        return this.playAmbient("sound_fire", fireSound, vol, 1.0);
     },
 
     playWaves(vol) {
-        return this.playAmbient("sound_waves", "/src/assets/sounds/ocean-waves-376898.mp3", vol, 1.0);
+        return this.playAmbient("sound_waves", wavesSound, vol, 1.0);
     },
 
     playCrickets(vol) {
-        return this.playAmbient("sound_night", "/src/assets/sounds/crickets-26444.mp3", vol, 0.2);
+        return this.playAmbient("sound_night", cricketsSound, vol, 0.2);
     },
 
     playWind(vol) {
-        return this.playAmbient("sound_wind", "/src/assets/sounds/rain.ogg", vol, 0.5);
+        return this.playAmbient("sound_wind", rainSound, vol, 0.5);
     },
 
     playWhite(vol) {

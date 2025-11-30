@@ -26,6 +26,7 @@ import SecureStorage from "./utils/secureStorage";
 import { ControlButton } from "./components/ControlButton";
 import RoomCanvas2D from "./components/RoomCanvas2D";
 import './index.css';
+import musicSound from './assets/sounds/music.mp3';
 
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -210,7 +211,7 @@ export default function CozyFocusApp() {
   useEffect(() => {
     const manageMusic = async () => {
       if (isMusicOn) {
-        await AudioEngine.playMusic("/src/assets/sounds/music.mp3", musicVolume);
+        await AudioEngine.playMusic(musicSound, musicVolume);
       } else {
         AudioEngine.stopMusic();
       }
