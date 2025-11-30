@@ -46,6 +46,7 @@ export default React.memo(function RoomCanvas2D({
     const cloudsRef = useRef([]);
     const rainRef = useRef([]);
     const particlesRef = useRef([]);
+    const mouseRef = useRef({ x: 0, y: 0, active: false });
 
     // Initialize objects only when equippedPets changes significantly
     useEffect(() => {
@@ -58,7 +59,7 @@ export default React.memo(function RoomCanvas2D({
                 id: pet.id,
                 data: pet,
                 x: 150 + Math.random() * 200,
-                y: 0,
+                y: Math.random() * 40 - 20, // Depth offset (-20 to 20)
                 dir: 1,
                 state: isFocusing ? "sleep" : "idle",
                 timer: Math.random() * 3,
@@ -515,8 +516,40 @@ export default React.memo(function RoomCanvas2D({
                 if (pet.blinkTimer < -10) pet.blinkTimer = 200 + Math.random() * 300;
 
                 // Logic
-                if (pet.timer > 0) {
+                // Mouse Follow Logic
+                if (mouseRef.current.active && !isFocusing) {
+                    pet.targetX = mouseRef.current.x;
+                    // Target Y is 0 (center of floor depth) for now, or maybe slightly random
+                    pet.targetY = 0;
+
+                    const dx = pet.targetX - pet.x;
+                    const dy = pet.targetY - pet.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist > 10) {
+                        pet.state = 'walk';
+                        pet.dir = dx > 0 ? 1 : -1;
+                        pet.timer = 1; // Keep walking
+
+                        // Move towards target
+                        const angle = Math.atan2(dy, dx);
+                        pet.x += Math.cos(angle) * 1.5;
+                        pet.y += Math.sin(angle) * 1.5;
+                        pet.frame += 0.2;
+                    } else {
+                        // Reached target (cookie)
+                        if (pet.state !== 'eat' && pet.state !== 'sit' && pet.state !== 'sleep') {
+                            pet.state = 'eat';
+                            pet.timer = 2; // Eat for 2 seconds
+                            pet.frame = 0;
+                        }
+                    }
+                } else if (pet.timer > 0) {
                     pet.timer -= 0.02;
+                    if (pet.state === 'eat' && pet.timer <= 0) {
+                        pet.state = 'sit'; // Sit after eating
+                        pet.timer = 3;
+                    }
                 } else {
                     // Pick new state
                     pet.timer = 2 + Math.random() * 4;
@@ -537,6 +570,7 @@ export default React.memo(function RoomCanvas2D({
                             pet.state = 'walk';
                             // Ensure target is within bounds (padding 50px)
                             pet.targetX = 50 + Math.random() * (W - 100);
+                            pet.targetY = Math.random() * 40 - 20; // Random depth
                             pet.dir = pet.targetX > pet.x ? 1 : -1;
                         }
                         else if (rand < 0.7) pet.state = 'sit';
@@ -583,13 +617,46 @@ export default React.memo(function RoomCanvas2D({
                     pet.lastX = pet.x;
                 }
 
-                // State Execution
-                if (pet.state === 'walk') {
+                // Collision Avoidance
+                petsRef.current.forEach(other => {
+                    if (pet.id !== other.id) {
+                        const dx = pet.x - other.x;
+                        const dy = pet.y - other.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < 40) {
+                            // Too close!
+                            const angle = Math.atan2(dy, dx);
+                            const force = (40 - dist) * 0.05;
+
+                            if (pet.state === 'idle' || pet.state === 'sit' || pet.state === 'sleep') {
+                                // Push idle pets away
+                                pet.x += Math.cos(angle) * force;
+                                pet.y += Math.sin(angle) * force;
+                            } else if (pet.state === 'walk' && other.state === 'walk') {
+                                // Walking pets nudge each other
+                                pet.x += Math.cos(angle) * force * 0.5;
+                                pet.y += Math.sin(angle) * force * 0.5;
+                            }
+
+                            // Clamp Y to floor bounds
+                            pet.y = Math.max(-30, Math.min(30, pet.y));
+                        }
+                    }
+                });
+
+                // State Execution (Random Walk)
+                if (pet.state === 'walk' && !mouseRef.current.active) {
                     const dx = pet.targetX - pet.x;
-                    if (Math.abs(dx) < 5) {
+                    const dy = pet.targetY - pet.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist < 5) {
                         pet.state = 'idle';
                     } else {
-                        pet.x += pet.dir * 1.5;
+                        const angle = Math.atan2(dy, dx);
+                        pet.x += Math.cos(angle) * 1.5;
+                        pet.y += Math.sin(angle) * 1.5;
                         pet.frame += 0.2;
                     }
                 } else if (pet.state === 'jump') {
@@ -612,8 +679,26 @@ export default React.memo(function RoomCanvas2D({
                             type: "z",
                             life: 1,
                         });
+                } else if (pet.state === 'eat') {
+                    pet.frame += 0.5;
+                    // Spawn Crumbs
+                    if (Math.random() < 0.1) {
+                        particlesRef.current.push({
+                            x: pet.x + (Math.random() * 20 - 10) * scale,
+                            y: floorY - 20 * scale,
+                            type: "crumb",
+                            life: 0.8,
+                        });
+                    }
                 }
 
+            });
+
+            // Sort pets by Y (depth)
+            const sortedPets = [...petsRef.current].sort((a, b) => a.y - b.y);
+
+            // Draw Pets
+            sortedPets.forEach(pet => {
                 // Drawing Offsets
                 let bounce = 0;
                 let rotate = 0;
@@ -623,6 +708,9 @@ export default React.memo(function RoomCanvas2D({
                     bounce = Math.abs(Math.sin(pet.frame)) * 5 * scale;
                     rotate = Math.sin(pet.frame) * 0.1; // Wiggle
                 }
+                if (pet.state === 'eat') {
+                    bounce = Math.sin(pet.frame) * 2 * scale;
+                }
 
                 const breathe =
                     pet.state === 'idle' || pet.state === 'sleep' || pet.state === 'sit'
@@ -630,12 +718,22 @@ export default React.memo(function RoomCanvas2D({
                         : 0;
                 const sleepSquish = pet.state === 'sleep' ? 15 * scale : 0;
                 const sitSquish = pet.state === 'sit' ? 5 * scale : 0;
-                const py = floorY - 30 * scale - bounce + sleepSquish + sitSquish;
+                // Use pet.y for depth offset
+                const py = floorY - 30 * scale - bounce + sleepSquish + sitSquish + pet.y * scale;
 
                 ctx.save();
                 ctx.translate(pet.x, py);
                 ctx.rotate(rotate);
-                ctx.scale(scale, scale);
+
+                // Eating Scale Effect (Munching)
+                let scaleX = scale;
+                let scaleY = scale;
+                if (pet.state === 'eat') {
+                    const munch = Math.sin(pet.frame) * 0.05;
+                    scaleX = scale * (1 + munch);
+                    scaleY = scale * (1 - munch);
+                }
+                ctx.scale(scaleX, scaleY);
 
                 // Emote Bubble
                 if (pet.emote) {
@@ -783,6 +881,7 @@ export default React.memo(function RoomCanvas2D({
                 ctx.restore();
             });
 
+            // Particles
             particlesRef.current.forEach((p, i) => {
                 p.y -= 0.5;
                 p.life -= 0.01;
@@ -792,6 +891,11 @@ export default React.memo(function RoomCanvas2D({
                     ctx.fillStyle = "#fda4af";
                     ctx.font = "20px sans-serif";
                     ctx.fillText("❤️", p.x, p.y);
+                } else if (p.type === "crumb") {
+                    ctx.fillStyle = "#d97706";
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     ctx.fillStyle = "#94a3b8";
                     ctx.font = "bold 16px sans-serif";
@@ -877,6 +981,20 @@ export default React.memo(function RoomCanvas2D({
         return () => cancelAnimationFrame(requestRef.current);
     }, []); // Empty dependency array = run once!
 
+    const handleMouseMove = (e) => {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = canvasRef.current.width / rect.width;
+        mouseRef.current = {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top), // Y not used for walking but good to have
+            active: true
+        };
+    };
+
+    const handleMouseLeave = () => {
+        mouseRef.current.active = false;
+    };
+
     const handleClick = (e) => {
         const rect = canvasRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -902,13 +1020,13 @@ export default React.memo(function RoomCanvas2D({
             }
         });
     };
-
-
     return (
         <canvas
             ref={canvasRef}
-            className="w-full h-full cursor-pointer"
+            className="absolute top-0 left-0 w-full h-full z-10"
             onClick={handleClick}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
         />
     );
-})
+});
