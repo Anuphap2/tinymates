@@ -19,9 +19,9 @@ export function ShopModal({
     ];
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-[#fafafa]">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden bg-[#fafafa]">
             {/* Category Selector Pills */}
-            <div className="flex px-6 pt-5 pb-3 gap-2 border-b border-[#e7e5e4] bg-white">
+            <div className="flex px-6 pt-5 pb-3 gap-2 border-b border-[#e7e5e4] bg-white shrink-0">
                 {tabs.map((tab) => {
                     const isActive = shopTab === tab.id;
                     return (
@@ -42,7 +42,7 @@ export function ShopModal({
             </div>
 
             {/* Product Card Grid */}
-            <div className="p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+            <div className="p-6 overflow-y-auto min-h-0 grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 custom-scrollbar">
                 {SHOP_ITEMS.filter((i) => i.category === shopTab).map((item) => {
                     const owned = inventory.includes(item.id);
                     let isEquipped = false;

@@ -12,7 +12,7 @@ export function DonateModal({ copyToClipboard }) {
     };
 
     return (
-        <div className="p-8 text-center flex flex-col items-center justify-center h-full bg-[#fafafa]">
+        <div className="p-6 md:p-8 text-center flex flex-col items-center justify-start md:justify-center h-full min-h-0 overflow-y-auto custom-scrollbar bg-[#fafafa]">
             {/* Header Icon */}
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-sm mb-4 border border-[#e7e5e4]">
                 ☕

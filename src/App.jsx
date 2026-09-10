@@ -592,7 +592,7 @@ export default function CozyFocusApp() {
           onClick={() => setActiveModal(null)}
         >
           <div
-            className="w-full max-w-lg max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden bg-white border border-[#e7e5e4] animate-in zoom-in-95 duration-200"
+            className="w-full max-w-lg h-[82vh] max-h-[680px] rounded-3xl shadow-2xl flex flex-col overflow-hidden bg-white border border-[#e7e5e4] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -612,7 +612,7 @@ export default function CozyFocusApp() {
             </div>
 
             {/* Modal Contents */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
               {activeModal === "shop" && (
                 <ShopModal
                   shopTab={shopTab}
@@ -641,7 +641,7 @@ export default function CozyFocusApp() {
               )}
 
               {activeModal === "todo" && (
-                <div className="p-6 h-full bg-[#fafafa]">
+                <div className="p-6 h-full min-h-0 overflow-y-auto custom-scrollbar bg-[#fafafa]">
                   <TodoList tasks={tasks} setTasks={setTasks} isDark={isDark} />
                 </div>
               )}

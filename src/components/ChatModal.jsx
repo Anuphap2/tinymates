@@ -17,7 +17,7 @@ export function ChatModal({
     ];
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-[#fafafa]">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden bg-[#fafafa]">
             {/* Quick Prompt Pills */}
             <div className="px-5 py-3 border-b border-[#e7e5e4] bg-white flex gap-2 overflow-x-auto no-scrollbar shrink-0">
                 {suggestions.map((s, idx) => (
@@ -33,7 +33,7 @@ export function ChatModal({
             </div>
 
             {/* Conversation Stream */}
-            <div className="flex-1 p-5 overflow-y-auto space-y-3">
+            <div className="flex-1 min-h-0 p-5 overflow-y-auto space-y-3 custom-scrollbar">
                 {messages.map((m, i) => (
                     <div
                         key={i}
