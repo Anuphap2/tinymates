@@ -1,38 +1,48 @@
-import React from "react";
-import { QrCode } from "lucide-react";
+import React, { useState } from "react";
+import { Coffee, QrCode, Copy, Check, Heart } from "lucide-react";
 
 export function DonateModal({ copyToClipboard }) {
+    const [copied, setCopied] = useState(false);
+    const promptPayNumber = "08x-xxx-xxxx";
+
+    const handleCopy = () => {
+        copyToClipboard(promptPayNumber);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     return (
-        <div className="p-10 text-center flex flex-col items-center justify-center h-full bg-gradient-to-b from-indigo-50/50 to-pink-50/50">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-5xl shadow-xl mb-6 animate-bounce">
+        <div className="p-8 text-center flex flex-col items-center justify-center h-full bg-[#fafafa]">
+            {/* Header Icon */}
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-sm mb-4 border border-[#e7e5e4]">
                 ☕
             </div>
-            <h3 className="text-2xl font-bold mb-2">Buy me a coffee</h3>
-            <p className="text-sm opacity-60 mb-6 max-w-xs">
-                Your support keeps this cozy room alive and free for everyone!
-                ❤️
+
+            <h3 className="text-2xl font-serif-editorial text-[#0c0a09] mb-1">
+                Support TinyMates
+            </h3>
+            <p className="text-xs text-[#777169] mb-5 max-w-xs leading-relaxed">
+                ร่วมสนับสนุนเพื่อให้น้องๆ สัตว์เลี้ยงและพื้นที่โฟกัสนี้เปิดให้ใช้งานฟรีและพัฒนาให้ดียิ่งขึ้นไป 💖
             </p>
 
-            {/* QR Code Image Placeholder */}
-            <div className="bg-white p-4 rounded-xl shadow-inner mb-4 border-2 border-dashed border-slate-200 w-48 h-48 flex items-center justify-center relative overflow-hidden">
-                <div className="text-center text-slate-400">
-                    <QrCode size={48} className="mx-auto mb-2 opacity-50" />
-                    <span className="text-xs">วางรูป QR Code ตรงนี้</span>
+            {/* QR Code Container */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm mb-5 border border-[#e7e5e4] w-52 h-52 flex flex-col items-center justify-center relative group">
+                <div className="p-3 bg-[#f5f5f5] rounded-xl border border-[#e7e5e4] mb-2 text-[#292524]">
+                    <QrCode size={48} className="opacity-80" />
                 </div>
-                {/* 🔴 ใส่รูป QR Code จริงตรงนี้ 
-                                   <img src="URL" className="absolute inset-0 w-full h-full object-contain" />
-                                */}
+                <span className="text-[11px] font-medium text-[#777169]">PromptPay QR Code</span>
+                <span className="text-[10px] text-[#a8a29e] mt-1">สแกนเพื่อสนับสนุนกาแฟ</span>
             </div>
 
+            {/* Copy PromptPay Button */}
             <button
-                onClick={() => {
-                    copyToClipboard("08x-xxx-xxxx");
-                }}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                onClick={handleCopy}
+                className="w-full max-w-xs bg-[#292524] hover:bg-[#0c0a09] text-white py-3 px-5 rounded-full text-xs font-semibold shadow-sm hover:shadow transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
             >
-                <span>Copy PromptPay</span>{" "}
-                <span className="bg-white/20 px-2 py-0.5 rounded text-xs">
-                    08x-xxx-xxxx
+                {copied ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} />}
+                <span>{copied ? "คัดลอกเบอร์แล้ว! ขอบคุณครับ" : "คัดลอกเบอร์พร้อมเพย์"}</span>
+                <span className="bg-white/15 px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wide">
+                    {promptPayNumber}
                 </span>
             </button>
         </div>

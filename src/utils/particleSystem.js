@@ -1,23 +1,53 @@
 export const drawParticles = (ctx, particles) => {
-    particles.forEach((p, i) => {
-        p.y -= 0.5;
-        p.life -= 0.01;
-        if (p.life <= 0) particles.splice(i, 1);
-        ctx.globalAlpha = p.life;
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= p.decay || 0.015;
+        p.y -= (p.vy !== undefined ? p.vy : 0.6);
+        if (p.vx) p.x += p.vx;
+
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+
         if (p.type === "heart") {
-            ctx.fillStyle = "#fda4af";
-            ctx.font = "20px sans-serif";
-            ctx.fillText("❤️", p.x, p.y);
+            const sway = Math.sin((1 - p.life) * 8) * 4;
+            ctx.font = `${Math.floor(18 * (p.scale || 1))}px sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText("❤️", p.x + sway, p.y);
         } else if (p.type === "crumb") {
+            p.vy = (p.vy || -1) + 0.15; // Gravity
             ctx.fillStyle = "#d97706";
             ctx.beginPath();
-            ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, (p.size || 2.5), 0, Math.PI * 2);
+            ctx.fill();
+        } else if (p.type === "coin") {
+            const scale = 1 + (1 - p.life) * 0.3;
+            ctx.font = `bold ${Math.floor(14 * scale)}px "Inter", sans-serif`;
+            ctx.fillStyle = "#eab308";
+            ctx.shadowColor = "rgba(234, 179, 8, 0.4)";
+            ctx.shadowBlur = 6;
+            ctx.textAlign = "center";
+            ctx.fillText(p.text || "+10 🪙", p.x, p.y);
+        } else if (p.type === "sparkle") {
+            const size = (p.size || 4) * p.life;
+            ctx.fillStyle = p.color || "#fef08a";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
             ctx.fill();
         } else {
-            ctx.fillStyle = "#94a3b8";
-            ctx.font = "bold 16px sans-serif";
-            ctx.fillText("Zzz", p.x, p.y);
+            // "z" sleep particle
+            const sway = Math.sin((1 - p.life) * 6) * 5;
+            const size = Math.floor(12 + (1 - p.life) * 6);
+            ctx.fillStyle = "#a8a29e";
+            ctx.font = `bold ${size}px "Inter", sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText("Zzz", p.x + sway, p.y);
         }
-        ctx.globalAlpha = 1;
-    });
+
+        ctx.restore();
+    }
 };
