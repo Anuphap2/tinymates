@@ -103,7 +103,7 @@ export default function CozyFocusApp() {
       showToast("คัดลอกเบอร์แล้ว! ขอบคุณมากครับ 💖", "success");
       setCoins((c) => c + 100);
       setIsSupporter(true);
-    } catch (err) {
+    } catch {
       showToast("คัดลอกไม่สำเร็จ", "error");
     }
     document.body.removeChild(textArea);
@@ -167,7 +167,7 @@ export default function CozyFocusApp() {
       }
     };
     manageMusic();
-  }, [isMusicOn]);
+  }, [isMusicOn, musicVolume]);
 
   useEffect(() => {
     AudioEngine.setMusicVolume(musicVolume);
@@ -214,26 +214,33 @@ export default function CozyFocusApp() {
 
   // Timer Interval
   useEffect(() => {
-    let interval = null;
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (timerMode === "focus" && prev % 60 === 0 && prev !== 25 * 60) {
-            setCoins((c) => c + 5);
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      setIsRunning(false);
-      AudioEngine.init();
-      if (timerMode === "focus") {
-        setCoins((c) => c + 100);
-        showToast("ยอดเยี่ยมมาก! โฟกัสสำเร็จ รับ 100 Coins 🎉", "success");
-      } else {
-        showToast("หมดเวลาพักผ่อนแล้ว พร้อมลุยต่อกันเลย!", "info");
-      }
+    if (!isRunning) return;
+
+    if (timeLeft <= 0) {
+      return;
     }
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsRunning(false);
+          AudioEngine.init();
+          if (timerMode === "focus") {
+            setCoins((c) => c + 100);
+            showToast("ยอดเยี่ยมมาก! โฟกัสสำเร็จ รับ 100 Coins 🎉", "success");
+          } else {
+            showToast("หมดเวลาพักผ่อนแล้ว พร้อมลุยต่อกันเลย!", "info");
+          }
+          return 0;
+        }
+        if (timerMode === "focus" && (prev - 1) % 60 === 0) {
+          setCoins((c) => c + 5);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
     return () => clearInterval(interval);
   }, [isRunning, timeLeft, timerMode]);
 
@@ -592,12 +599,20 @@ export default function CozyFocusApp() {
           onClick={() => setActiveModal(null)}
         >
           <div
-            className="w-full max-w-lg h-[82vh] max-h-[680px] rounded-3xl shadow-2xl flex flex-col overflow-hidden bg-white border border-[#e7e5e4] animate-in zoom-in-95 duration-200"
+            className={`w-full max-w-lg h-[82vh] max-h-[680px] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border ${
+              isDark
+                ? "bg-indigo-950 border-indigo-900/80 text-indigo-100"
+                : "bg-white border-[#e7e5e4] text-[#0c0a09]"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-[#e7e5e4] flex justify-between items-center bg-white shrink-0">
-              <h2 className="font-serif-editorial text-xl text-[#0c0a09] flex items-center gap-2">
+            <div className={`px-6 py-4 border-b flex justify-between items-center shrink-0 ${
+              isDark ? "bg-indigo-950 border-indigo-900/80 text-indigo-100" : "bg-white border-[#e7e5e4]"
+            }`}>
+              <h2 className={`font-serif-editorial text-xl flex items-center gap-2 ${
+                isDark ? "text-indigo-100" : "text-[#0c0a09]"
+              }`}>
                 {activeModal === "shop" && "Pet & Room Collection"}
                 {activeModal === "chat" && "Mindful Companion"}
                 {activeModal === "donate" && "Support the Creator"}
@@ -605,7 +620,12 @@ export default function CozyFocusApp() {
               </h2>
               <button
                 onClick={() => setActiveModal(null)}
-                className="w-8 h-8 rounded-full border border-[#e7e5e4] hover:bg-[#f5f5f5] flex items-center justify-center text-[#777169] hover:text-[#0c0a09] transition-all"
+                aria-label="Close modal"
+                className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+                  isDark
+                    ? "border-indigo-800/80 text-indigo-300 hover:text-white hover:bg-white/10"
+                    : "border-[#e7e5e4] hover:bg-[#f5f5f5] text-[#777169] hover:text-[#0c0a09]"
+                }`}
               >
                 <X size={16} />
               </button>
@@ -622,6 +642,7 @@ export default function CozyFocusApp() {
                   activeTheme={activeTheme}
                   coins={coins}
                   handleBuy={handleBuy}
+                  isDark={isDark}
                 />
               )}
 
@@ -633,15 +654,18 @@ export default function CozyFocusApp() {
                   handleSendChat={handleSendChat}
                   isChatLoading={isChatLoading}
                   messagesEndRef={messagesEndRef}
+                  isDark={isDark}
                 />
               )}
 
               {activeModal === "donate" && (
-                <DonateModal copyToClipboard={copyToClipboard} />
+                <DonateModal copyToClipboard={copyToClipboard} isDark={isDark} />
               )}
 
               {activeModal === "todo" && (
-                <div className="p-6 h-full min-h-0 overflow-y-auto custom-scrollbar bg-[#fafafa]">
+                <div className={`p-6 h-full min-h-0 overflow-y-auto custom-scrollbar ${
+                  isDark ? "bg-indigo-950/80" : "bg-[#fafafa]"
+                }`}>
                   <TodoList tasks={tasks} setTasks={setTasks} isDark={isDark} />
                 </div>
               )}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { SHOP_ITEMS } from "../constants";
 import {
     drawRoundRect,
@@ -56,20 +56,19 @@ export default React.memo(function RoomCanvas2D({
     const grassRef = useRef([]);
     const treatRef = useRef(null); // Optional dropped treat/cookie on floor
     const mouseRef = useRef({ x: 0, y: 0, active: false });
-    const bookDataRef = useRef(null);
     const sizeRef = useRef({ width: window.innerWidth, height: window.innerHeight, dpr: Math.min(window.devicePixelRatio || 1, 2) });
 
     // Initialize book data once
-    if (!bookDataRef.current) {
+    const bookData = useMemo(() => {
         const colors = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7"];
-        bookDataRef.current = Array(3).fill(0).map(() =>
+        return Array(3).fill(0).map(() =>
             Array(5).fill(0).map(() => ({
                 h: 20 + Math.random() * 10,
                 w: 8 + Math.random() * 5,
                 color: colors[Math.floor(Math.random() * colors.length)]
             }))
         );
-    }
+    }, []);
 
     // Initialize pets when equippedPets changes
     useEffect(() => {
@@ -337,7 +336,7 @@ export default React.memo(function RoomCanvas2D({
                 });
                 drawOutdoor(ctx, W, floorY, scale, activeTheme);
             } else {
-                drawGenericRoom(ctx, W, floorY, scale, activeTheme, bookDataRef.current);
+                drawGenericRoom(ctx, W, floorY, scale, activeTheme, bookData);
             }
 
             // --- 5. DROPPED TREAT / COOKIE (If clicked on floor) ---
@@ -549,7 +548,7 @@ export default React.memo(function RoomCanvas2D({
 
         requestRef.current = requestAnimationFrame(render);
         return () => cancelAnimationFrame(requestRef.current);
-    }, []);
+    }, [bookData]);
 
     // Interactive mouse / touch handling
     const handlePointerMove = (e) => {

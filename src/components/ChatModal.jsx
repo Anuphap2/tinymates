@@ -17,14 +17,23 @@ export function ChatModal({
     ];
 
     return (
-        <div className="flex flex-col h-full min-h-0 overflow-hidden bg-[#fafafa]">
+        <div className={`flex flex-col h-full min-h-0 overflow-hidden ${
+            isDark ? "bg-indigo-950/80 text-indigo-100" : "bg-[#fafafa] text-[#0c0a09]"
+        }`}>
             {/* Quick Prompt Pills */}
-            <div className="px-5 py-3 border-b border-[#e7e5e4] bg-white flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+            <div className={`px-5 py-3 border-b flex gap-2 overflow-x-auto no-scrollbar shrink-0 ${
+                isDark ? "bg-indigo-950 border-indigo-900/60" : "bg-white border-[#e7e5e4]"
+            }`}>
                 {suggestions.map((s, idx) => (
                     <button
                         key={idx}
                         onClick={() => handleSendChat(s.text)}
-                        className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border border-[#e7e5e4] bg-[#f5f5f5] text-[#292524] hover:bg-[#f0efed] hover:border-[#d6d3d1] transition-all flex items-center gap-1.5 active:scale-95"
+                        aria-label={s.text}
+                        className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 active:scale-95 ${
+                            isDark
+                                ? "border-indigo-800/60 bg-indigo-900/40 text-indigo-200 hover:bg-indigo-900/70 hover:border-indigo-700"
+                                : "border-[#e7e5e4] bg-[#f5f5f5] text-[#292524] hover:bg-[#f0efed] hover:border-[#d6d3d1]"
+                        }`}
                     >
                         {s.icon}
                         <span>{s.text}</span>
@@ -42,8 +51,12 @@ export function ChatModal({
                         <div
                             className={`p-3.5 rounded-2xl text-xs md:text-sm max-w-[85%] leading-relaxed transition-all ${
                                 m.role === "user"
-                                    ? "bg-[#292524] text-white rounded-br-sm shadow-sm"
-                                    : "bg-white text-[#0c0a09] border border-[#e7e5e4] rounded-bl-sm shadow-sm"
+                                    ? isDark
+                                        ? "bg-indigo-600 text-white rounded-br-sm shadow-sm"
+                                        : "bg-[#292524] text-white rounded-br-sm shadow-sm"
+                                    : isDark
+                                        ? "bg-indigo-900/60 text-indigo-100 border border-indigo-800/60 rounded-bl-sm shadow-sm"
+                                        : "bg-white text-[#0c0a09] border border-[#e7e5e4] rounded-bl-sm shadow-sm"
                             }`}
                         >
                             {m.text}
@@ -52,10 +65,14 @@ export function ChatModal({
                 ))}
 
                 {isChatLoading && (
-                    <div className="flex items-center gap-1.5 p-3 rounded-2xl bg-white border border-[#e7e5e4] text-[#777169] text-xs w-fit">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#777169] animate-bounce" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#777169] animate-bounce [animation-delay:0.2s]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#777169] animate-bounce [animation-delay:0.4s]" />
+                    <div className={`flex items-center gap-1.5 p-3 rounded-2xl text-xs w-fit border ${
+                        isDark
+                            ? "bg-indigo-900/50 border-indigo-800/60 text-indigo-300"
+                            : "bg-white border-[#e7e5e4] text-[#777169]"
+                    }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? "bg-indigo-300" : "bg-[#777169]"}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s] ${isDark ? "bg-indigo-300" : "bg-[#777169]"}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s] ${isDark ? "bg-indigo-300" : "bg-[#777169]"}`} />
                         <span className="ml-1 text-[11px]">น้องกำลังคิดคำตอบ...</span>
                     </div>
                 )}
@@ -63,9 +80,15 @@ export function ChatModal({
             </div>
 
             {/* Input Bar */}
-            <div className="p-4 border-t border-[#e7e5e4] bg-white flex gap-2 items-center shrink-0">
+            <div className={`p-4 border-t flex gap-2 items-center shrink-0 ${
+                isDark ? "bg-indigo-950 border-indigo-900/60" : "bg-white border-[#e7e5e4]"
+            }`}>
                 <input
-                    className="flex-1 rounded-full px-4 py-2.5 text-xs md:text-sm bg-[#f5f5f5] border border-[#e7e5e4] text-[#0c0a09] placeholder-[#a8a29e] outline-none focus:border-[#292524] focus:bg-white transition-all duration-200"
+                    className={`flex-1 rounded-full px-4 py-2.5 text-xs md:text-sm border outline-none transition-all duration-200 ${
+                        isDark
+                            ? "bg-indigo-900/50 border-indigo-800/60 text-indigo-100 placeholder-indigo-400/50 focus:border-indigo-400 focus:bg-indigo-900/80"
+                            : "bg-[#f5f5f5] border-[#e7e5e4] text-[#0c0a09] placeholder-[#78716c] focus:border-[#292524] focus:bg-white"
+                    }`}
                     value={inputMsg}
                     onChange={(e) => setInputMsg(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
@@ -74,7 +97,12 @@ export function ChatModal({
                 <button
                     onClick={() => handleSendChat()}
                     disabled={!inputMsg.trim() || isChatLoading}
-                    className="w-10 h-10 rounded-full bg-[#292524] text-white flex items-center justify-center hover:bg-[#0c0a09] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200 active:scale-95"
+                    aria-label="Send message"
+                    className={`w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200 active:scale-95 ${
+                        isDark
+                            ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                            : "bg-[#292524] text-white hover:bg-[#0c0a09]"
+                    }`}
                 >
                     <Send size={15} />
                 </button>

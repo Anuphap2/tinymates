@@ -92,7 +92,7 @@ User says: ${textToSend}`
             } else {
                 setMessages((p) => [...p, { role: "model", text: getLocalPetReply(textToSend) }]);
             }
-        } catch (e) {
+        } catch {
             // Fallback gracefully to pet reply
             setMessages((p) => [...p, { role: "model", text: getLocalPetReply(textToSend) }]);
         } finally {

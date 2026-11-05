@@ -5,8 +5,6 @@ import {
     drawCuteChair,
     drawBookshelf,
     drawPainting,
-    drawGrass,
-    drawTree,
     drawShelf,
     drawCurtains
 } from "./canvasHelpers";

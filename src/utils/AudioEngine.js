@@ -39,7 +39,7 @@ export const AudioEngine = {
                 try {
                     if (sound.source && sound.source.stop) sound.source.stop();
                     if (sound.nodes) sound.nodes.forEach((node) => node.disconnect());
-                } catch (e) { }
+                } catch { /* ignore */ }
             }
             // Remove from map (effectively cancelling load if still loading)
             this.activeAmbients.delete(id);
@@ -180,7 +180,7 @@ export const AudioEngine = {
         const gain = ctx.createGain();
         const multiplier = 0.3;
 
-        const currentVol = this.masterAmbientVolume;
+        const currentVol = vol !== undefined ? vol : this.masterAmbientVolume;
         gain.gain.value = currentVol * multiplier;
 
         noise.connect(filter);
@@ -207,7 +207,7 @@ export const AudioEngine = {
                 try {
                     sound.gain.gain.cancelScheduledValues(this.ctx.currentTime);
                     sound.gain.gain.setValueAtTime(targetVol, this.ctx.currentTime);
-                } catch (e) {
+                } catch {
                     sound.gain.gain.value = targetVol;
                 }
             }
@@ -238,7 +238,7 @@ export const AudioEngine = {
         source.loop = true;
 
         const gainNode = ctx.createGain();
-        const currentVol = this.masterMusicVolume;
+        const currentVol = vol !== undefined ? vol : this.masterMusicVolume;
         gainNode.gain.value = currentVol;
 
         source.connect(gainNode);
@@ -258,7 +258,7 @@ export const AudioEngine = {
                 this.musicNode.stop();
                 this.musicNode.disconnect();
                 this.musicGain.disconnect();
-            } catch (e) { }
+            } catch { /* ignore */ }
             this.musicNode = null;
             this.musicGain = null;
         }
@@ -271,7 +271,7 @@ export const AudioEngine = {
             try {
                 this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
                 this.musicGain.gain.setValueAtTime(vol, this.ctx.currentTime);
-            } catch (e) {
+            } catch {
                 this.musicGain.gain.value = vol;
             }
         }
